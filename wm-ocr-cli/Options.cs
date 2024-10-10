@@ -27,5 +27,8 @@ namespace wm_ocr_cli
 
         [Option('x', "lang-list", HelpText = "Print the list of all locally available languages for OCR.")]
         public bool LanguageList { get; set; }
+
+        [Option('n', "one-line", HelpText = "Return OCR result as a single line.")]
+        public bool OneLine { get; set; }
     }
 }

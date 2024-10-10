@@ -2,15 +2,26 @@
 using Windows.Graphics.Imaging;
 using Windows.Foundation;
 using Windows.Storage.Streams;
+using System.Text;
 
 namespace wm_ocr_cli
 {
     class OutputHandler
     {
-
         public static async Task<int> OutputResult(Options options, SoftwareBitmap bitmap, Guid decoderCodecId, OcrResult ocrResult)
         {
-            string textResult = ProcessResult(ocrResult.Text);
+            string textResult;
+            if (options.OneLine)
+            {
+                textResult = ocrResult.Text;
+            }
+            else
+            {
+                var stringBuilder = new StringBuilder();
+                foreach (var line in ocrResult.Lines)
+                    stringBuilder.AppendLine(line.Text);
+                textResult = stringBuilder.ToString();
+            }
 
             // Output result to file
             if (options.Output != null)
@@ -61,13 +72,6 @@ namespace wm_ocr_cli
             }
 
             return 0;
-        }
-
-        private static string ProcessResult(string result)
-        {
-            result = result.Trim();
-            // TODO
-            return result;
         }
 
         private static async Task<SoftwareBitmap> CropSoftwareBitmapAsync(SoftwareBitmap originalBitmap, BitmapBounds bitmapBounds)
