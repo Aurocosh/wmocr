@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "wm-ocr-cli": {
+      "commandName": "Project",
+      "commandLineArgs": "-i \"D:\\Temp\\test.jpg\""
+    }
+  }
+}

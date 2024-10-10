@@ -9,9 +9,8 @@ using System.IO;
 using Windows.Graphics.Imaging;
 using Windows.Storage;
 using Windows.Foundation;
-using BitmapDecoder = Windows.Graphics.Imaging.BitmapDecoder;
 using CommandLine;
-using Windows.UI.Xaml.Data;
+//using Windows.UI.Xaml.Data;
 
 namespace wm_ocr_cli
 {
@@ -57,12 +56,11 @@ namespace wm_ocr_cli
                 return 1;
             }
 
-            //string imagePath = "D:\\Temp\\test.jpg";
+            options.Input = "D:\\Temp\\test.jpg";
 
             try
             {
-                var result = RecognizeAsync(fullImagePath, "ru").GetAwaiter().GetResult();
-
+                var result = await RecognizeAsync(fullImagePath, "ru");
                 if (result != null)
                 {
                     Console.WriteLine($"Result text:\n {result.Text}");
@@ -84,16 +82,15 @@ namespace wm_ocr_cli
             return 0;
         }
 
-
         // Handle parsing errors
-        private static Task<int> HandleErrors(IEnumerable<Error> errors)
+        private static async Task<int> HandleErrors(IEnumerable<CommandLine.Error> errors)
         {
             foreach (var error in errors)
             {
                 Console.Error.WriteLine($"Error: {error}");
             }
             //Environment.Exit(1); // Exit with error code
-            return Task.FromResult(1);
+            return 1;
         }
 
         static async Task<SoftwareBitmap> LoadImageAsync(StorageFile file)
@@ -114,7 +111,7 @@ namespace wm_ocr_cli
             return OcrEngine.TryCreateFromLanguage(lang);
         }
 
-        static async Task<OcrResult> RecognizeAsync(string imagePath, string language)
+        static async Task<OcrResult?> RecognizeAsync(string imagePath, string language)
         {
             OcrEngine ocrEngine = GetOcrEngine(language);
             if (ocrEngine == null)
