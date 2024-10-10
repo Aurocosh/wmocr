@@ -3,6 +3,18 @@
     "wm-ocr-cli": {
       "commandName": "Project",
       "commandLineArgs": "-i \"D:\\Temp\\test.jpg\""
+    },
+    "wm-ocr-cli crop test": {
+      "commandName": "Project",
+      "commandLineArgs": "-i \"D:\\Temp\\test.jpg\" -c \"D:\\Temp\\test-cropped.jpg\""
+    },
+    "wm-ocr-cli text file": {
+      "commandName": "Project",
+      "commandLineArgs": "-i \"D:\\Temp\\test.jpg\" -o \"D:\\Temp\\ocr-result.txt\""
+    },
+    "wm-ocr-cli stdout, text and crop": {
+      "commandName": "Project",
+      "commandLineArgs": "-i \"D:\\Temp\\test.jpg\" -c \"D:\\Temp\\test-cropped.jpg\" -o \"D:\\Temp\\ocr-result.txt\" -s -b 120"
     }
   }
 }

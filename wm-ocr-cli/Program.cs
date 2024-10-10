@@ -5,11 +5,11 @@ using System.Text;
 using System.Threading.Tasks;
 using Windows.Globalization;
 using Windows.Media.Ocr;
-using System.IO;
 using Windows.Graphics.Imaging;
 using Windows.Storage;
 using Windows.Foundation;
 using CommandLine;
+using Windows.Storage.Streams;
 //using Windows.UI.Xaml.Data;
 
 namespace wm_ocr_cli
@@ -17,16 +17,16 @@ namespace wm_ocr_cli
     public class Options
     {
         [Option('i', "input", Required = true, HelpText = "Path to the image file to process with OCR.")]
-        public string Input { get; set; }
+        public required string Input { get; set; }
 
         [Option('o', "output", Required = false, HelpText = "Path to output text file. Writes OCR result to this file.")]
-        public string Output { get; set; }
+        public string? Output { get; set; }
 
         [Option('s', "stdout", Required = false, HelpText = "Perform OCR and print result to stdout. Default behaviour if no other output options is specified.")]
-        public string Stdout { get; set; }
+        public bool Stdout { get; set; }
 
         [Option('c', "crop", Required = false, HelpText = "Path to cropped output image.Detect bounding box for all text and crop original image to this bounding box.")]
-        public string Crop { get; set; }
+        public string? Crop { get; set; }
 
         [Option('b', "bb-margin", Required = false, Default = 10, HelpText = "Bounding box margin.The bounding box will be expanded by this value.")]
         public int BoundingBoxMargin { get; set; }
@@ -41,13 +41,24 @@ namespace wm_ocr_cli
         {
             var result = await Parser.Default.ParseArguments<Options>(args)
               .MapResult(
-                  options => Execute(options), // Execute and capture result
-                  errors => HandleErrors(errors)); // Handle errors
-
-            //Console.WriteLine($"retValue= {result}");
+                  options => Execute(options),
+                  errors => HandleErrors(errors));
         }
 
         static async Task<int> Execute(Options options)
+        {
+            try
+            {
+                return await DoStuff(options);
+            }
+            catch (Exception error)
+            {
+                Console.Error.WriteLine($"Caught exception: {error.Message}");
+                return 1;
+            }
+        }
+
+        static async Task<int> DoStuff(Options options)
         {
             var fullImagePath = Path.GetFullPath(options.Input);
             if (!File.Exists(fullImagePath))
@@ -56,30 +67,122 @@ namespace wm_ocr_cli
                 return 1;
             }
 
-            options.Input = "D:\\Temp\\test.jpg";
-
-            try
+            (SoftwareBitmap bitmap, Guid decoderCodecId) = await GetIputBitmap(fullImagePath);
+            var result = await RecognizeAsync(bitmap, "ru");
+            if (result == null)
             {
-                var result = await RecognizeAsync(fullImagePath, "ru");
-                if (result != null)
-                {
-                    Console.WriteLine($"Result text:\n {result.Text}");
+                Console.Error.WriteLine($"Failed to parse image text");
+                return 1;
+            }
 
-                    Rect boundingBox = GetCompleteOcrBoundingBox(result);
-                    Console.WriteLine($"Total bounding box: {boundingBox}");
+            await OutputResult(options, bitmap, decoderCodecId, result);
+            return 0;
+        }
+
+        static string ProcessResult(string result)
+        {
+            result = result.Trim();
+            // TODO
+            return result;
+        }
+
+        static async Task OutputResult(Options options, SoftwareBitmap bitmap, Guid decoderCodecId, OcrResult ocrResult)
+        {
+            string textResult = ProcessResult(ocrResult.Text);
+
+            // Output result to file
+            if (options.Output != null)
+            {
+                var fullOutputPath = Path.GetFullPath(options.Output);
+                if (options.Append)
+                    File.AppendAllText(fullOutputPath, textResult);
+                else
+                    File.WriteAllText(fullOutputPath, textResult);
+            }
+
+            // Output result to stdout
+            if (options.Stdout || (options.Output == null && options.Crop == null))
+            {
+                Console.WriteLine(textResult);
+            }
+
+            // Crop image to file
+            if (options.Crop != null)
+            {
+                Rect boundingBox = GetCompleteOcrBoundingBox(ocrResult);
+                Console.WriteLine($"Total bounding box: {boundingBox}");
+
+                boundingBox = boundingBox.Inflate(options.BoundingBoxMargin);
+                Console.WriteLine($"Expanded bounding box: {boundingBox}");
+
+                var imageRect = new Rect(0, 0, bitmap.PixelWidth, bitmap.PixelHeight);
+                boundingBox.Intersect(imageRect);
+
+                Console.WriteLine($"Cropping bounding box: {boundingBox}");
+                if (boundingBox.IsEmpty)
+                {
+                    Console.Error.WriteLine($"Failed to crop the image. Bounding box is invalid");
                 }
                 else
                 {
-                    Console.WriteLine($"Failed to parse image text");
+                    uint cropX = (uint)boundingBox.X;
+                    uint cropY = (uint)boundingBox.Y;
+                    uint cropWidth = (uint)boundingBox.Width;
+                    uint cropHeight = (uint)boundingBox.Height;
+                    SoftwareBitmap croppedBitmap = await CropSoftwareBitmapAsync(bitmap, cropX, cropY, cropWidth, cropHeight);
+
+                    var fullCropPath = Path.GetFullPath(options.Crop);
+                    //StorageFile storageFile = await StorageFile.GetFileFromPathAsync(fullCropPath);
+
+                    Guid encoderCodecId = GetEncoderIdFromDecoder(decoderCodecId);
+                    await SaveSoftwareBitmapToFileAsync(croppedBitmap, fullCropPath, encoderCodecId);
                 }
             }
-            catch (Exception error)
+        }
+
+        public static async Task<SoftwareBitmap> CropSoftwareBitmapAsync(SoftwareBitmap originalBitmap, uint cropX, uint cropY, uint cropWidth, uint cropHeight)
+        {
+            var convertedBitmap = SoftwareBitmap.Convert(originalBitmap, BitmapPixelFormat.Bgra8, BitmapAlphaMode.Premultiplied);
+
+            using var stream = new InMemoryRandomAccessStream();
+
+            BitmapEncoder encoder = await BitmapEncoder.CreateAsync(BitmapEncoder.PngEncoderId, stream);
+            encoder.SetSoftwareBitmap(convertedBitmap);
+            await encoder.FlushAsync();
+
+            stream.Seek(0);
+            BitmapDecoder decoder = await BitmapDecoder.CreateAsync(stream);
+
+            var bounds = new BitmapBounds
             {
-                Console.Error.WriteLine("Error: " + error.Message);
-                return 1;
-            }
-            Console.ReadLine();
-            return 0;
+                X = cropX,
+                Y = cropY,
+                Width = cropWidth,
+                Height = cropHeight
+            };
+
+            var transform = new BitmapTransform
+            {
+                Bounds = bounds
+            };
+
+            SoftwareBitmap croppedBitmap = await decoder.GetSoftwareBitmapAsync(
+                BitmapPixelFormat.Bgra8,
+                BitmapAlphaMode.Premultiplied,
+                transform,
+                ExifOrientationMode.IgnoreExifOrientation,
+                ColorManagementMode.DoNotColorManage);
+
+            return croppedBitmap;
+        }
+
+        public static async Task SaveSoftwareBitmapToFileAsync(SoftwareBitmap softwareBitmap, string filePath, Guid codecId)
+        {
+            var bitmapToSave = SoftwareBitmap.Convert(softwareBitmap, BitmapPixelFormat.Bgra8, BitmapAlphaMode.Premultiplied);
+            using var fileStream = new FileStream(filePath, FileMode.OpenOrCreate, FileAccess.ReadWrite);
+            BitmapEncoder encoder = await BitmapEncoder.CreateAsync(codecId, fileStream.AsRandomAccessStream());
+            encoder.SetSoftwareBitmap(bitmapToSave);
+            await encoder.FlushAsync();
         }
 
         // Handle parsing errors
@@ -89,17 +192,7 @@ namespace wm_ocr_cli
             {
                 Console.Error.WriteLine($"Error: {error}");
             }
-            //Environment.Exit(1); // Exit with error code
             return 1;
-        }
-
-        static async Task<SoftwareBitmap> LoadImageAsync(StorageFile file)
-        {
-            using (var stream = await file.OpenAsync(FileAccessMode.Read))
-            {
-                var decoder = await BitmapDecoder.CreateAsync(stream);
-                return await decoder.GetSoftwareBitmapAsync(BitmapPixelFormat.Bgra8, BitmapAlphaMode.Premultiplied);
-            }
         }
 
         static OcrEngine GetOcrEngine(string language)
@@ -111,7 +204,16 @@ namespace wm_ocr_cli
             return OcrEngine.TryCreateFromLanguage(lang);
         }
 
-        static async Task<OcrResult?> RecognizeAsync(string imagePath, string language)
+        static async Task<Tuple<SoftwareBitmap, Guid>> GetIputBitmap(string imagePath)
+        {
+            using var fileStream = new FileStream(imagePath, FileMode.Open, FileAccess.Read);
+            var decoder = await BitmapDecoder.CreateAsync(fileStream.AsRandomAccessStream());
+            Guid decoderCodecId = decoder.DecoderInformation.CodecId;
+            SoftwareBitmap bitmap = await decoder.GetSoftwareBitmapAsync(BitmapPixelFormat.Bgra8, BitmapAlphaMode.Premultiplied);
+            return Tuple.Create(bitmap, decoderCodecId);
+        }
+
+        static async Task<OcrResult?> RecognizeAsync(SoftwareBitmap bitmap, string language)
         {
             OcrEngine ocrEngine = GetOcrEngine(language);
             if (ocrEngine == null)
@@ -119,11 +221,6 @@ namespace wm_ocr_cli
                 Console.Error.WriteLine("Selected language is not available.");
                 return null;
             }
-
-            var fullImagePath = Path.GetFullPath(imagePath);
-            StorageFile storageFile = await StorageFile.GetFileFromPathAsync(fullImagePath);
-            SoftwareBitmap bitmap = await LoadImageAsync(storageFile);
-
             if (bitmap.PixelWidth > OcrEngine.MaxImageDimension || bitmap.PixelHeight > OcrEngine.MaxImageDimension)
             {
                 Console.Error.WriteLine($"Bitmap dimensions ({bitmap.PixelWidth}x{bitmap.PixelHeight}) are too big for OCR. Max image dimension is {OcrEngine.MaxImageDimension}.");
@@ -141,6 +238,23 @@ namespace wm_ocr_cli
                 foreach (var word in line.Words)
                     boundingBox.Union(word.BoundingRect);
             return boundingBox;
+        }
+
+        // Function to map decoder's container format to an appropriate encoder
+        private static Guid GetEncoderIdFromDecoder(Guid containerFormat)
+        {
+            if (containerFormat == BitmapDecoder.PngDecoderId)
+                return BitmapEncoder.PngEncoderId;
+            else if (containerFormat == BitmapDecoder.JpegDecoderId)
+                return BitmapEncoder.JpegEncoderId;
+            else if (containerFormat == BitmapDecoder.BmpDecoderId)
+                return BitmapEncoder.BmpEncoderId;
+            else if (containerFormat == BitmapDecoder.GifDecoderId)
+                return BitmapEncoder.GifEncoderId;
+            else if (containerFormat == BitmapDecoder.TiffDecoderId)
+                return BitmapEncoder.TiffEncoderId;
+            else
+                return Guid.Empty;
         }
     }
 }
