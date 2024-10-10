@@ -6,7 +6,6 @@ using System.Threading.Tasks;
 using Windows.Globalization;
 using Windows.Media.Ocr;
 using Windows.Graphics.Imaging;
-using Windows.Storage;
 using Windows.Foundation;
 using CommandLine;
 using Windows.Storage.Streams;
@@ -16,8 +15,8 @@ namespace wm_ocr_cli
 {
     public class Options
     {
-        [Option('i', "input", Required = true, HelpText = "Path to the image file to process with OCR.")]
-        public required string Input { get; set; }
+        [Option('i', "input", Required = false, HelpText = "Path to the image file to process with OCR.")]
+        public string? Input { get; set; }
 
         [Option('o', "output", Required = false, HelpText = "Path to output text file. Writes OCR result to this file.")]
         public string? Output { get; set; }
@@ -33,6 +32,12 @@ namespace wm_ocr_cli
 
         [Option('a', "append", HelpText = "When writing to text file append instead of overwriting the file.")]
         public bool Append { get; set; }
+
+        [Option('l', "lang", HelpText = "Which language should be used for OCR. Only languages with installed OCR support can be used.")]
+        public string? Language { get; set; }
+
+        [Option('x', "lang-list", HelpText = "Print the list of all locally available languages for OCR.")]
+        public bool LanguageList { get; set; }
     }
 
     internal class Program
@@ -40,16 +45,21 @@ namespace wm_ocr_cli
         public static async Task Main(string[] args)
         {
             var result = await Parser.Default.ParseArguments<Options>(args)
-              .MapResult(
-                  options => Execute(options),
-                  errors => HandleErrors(errors));
+              .MapResult(Execute, HandleErrors);
         }
 
         static async Task<int> Execute(Options options)
         {
+            if (options.LanguageList)
+            {
+                Console.WriteLine("Supported languages:");
+                foreach (var language in OcrEngine.AvailableRecognizerLanguages)
+                    Console.WriteLine(language.LanguageTag);
+            }
+
             try
             {
-                return await DoStuff(options);
+                return await PerformOcr(options);
             }
             catch (Exception error)
             {
@@ -58,8 +68,14 @@ namespace wm_ocr_cli
             }
         }
 
-        static async Task<int> DoStuff(Options options)
+        static async Task<int> PerformOcr(Options options)
         {
+            if (options.Input == null)
+            {
+                Console.Error.WriteLine($"No input file provided. To show help enter: wmocr --help.");
+                return 1;
+            }
+
             var fullImagePath = Path.GetFullPath(options.Input);
             if (!File.Exists(fullImagePath))
             {
@@ -67,15 +83,18 @@ namespace wm_ocr_cli
                 return 1;
             }
 
-            (SoftwareBitmap bitmap, Guid decoderCodecId) = await GetIputBitmap(fullImagePath);
-            var result = await RecognizeAsync(bitmap, "ru");
+            using var fileStream = new FileStream(fullImagePath, FileMode.Open, FileAccess.Read);
+            var decoder = await BitmapDecoder.CreateAsync(fileStream.AsRandomAccessStream());
+            SoftwareBitmap bitmap = await decoder.GetSoftwareBitmapAsync(BitmapPixelFormat.Bgra8, BitmapAlphaMode.Premultiplied);
+
+            var result = await RecognizeAsync(bitmap, options.Language);
             if (result == null)
             {
                 Console.Error.WriteLine($"Failed to parse image text");
                 return 1;
             }
 
-            await OutputResult(options, bitmap, decoderCodecId, result);
+            await OutputResult(options, bitmap, decoder.DecoderInformation.CodecId, result);
             return 0;
         }
 
@@ -110,40 +129,36 @@ namespace wm_ocr_cli
             if (options.Crop != null)
             {
                 Rect boundingBox = GetCompleteOcrBoundingBox(ocrResult);
-                Console.WriteLine($"Total bounding box: {boundingBox}");
-
                 boundingBox = boundingBox.Inflate(options.BoundingBoxMargin);
-                Console.WriteLine($"Expanded bounding box: {boundingBox}");
 
                 var imageRect = new Rect(0, 0, bitmap.PixelWidth, bitmap.PixelHeight);
                 boundingBox.Intersect(imageRect);
 
-                Console.WriteLine($"Cropping bounding box: {boundingBox}");
                 if (boundingBox.IsEmpty)
                 {
                     Console.Error.WriteLine($"Failed to crop the image. Bounding box is invalid");
                 }
                 else
                 {
-                    uint cropX = (uint)boundingBox.X;
-                    uint cropY = (uint)boundingBox.Y;
-                    uint cropWidth = (uint)boundingBox.Width;
-                    uint cropHeight = (uint)boundingBox.Height;
-                    SoftwareBitmap croppedBitmap = await CropSoftwareBitmapAsync(bitmap, cropX, cropY, cropWidth, cropHeight);
+                    var bounds = new BitmapBounds
+                    {
+                        X = (uint)boundingBox.X,
+                        Y = (uint)boundingBox.Y,
+                        Width = (uint)boundingBox.Width,
+                        Height = (uint)boundingBox.Height
+                    };
+                    SoftwareBitmap croppedBitmap = await CropSoftwareBitmapAsync(bitmap, bounds);
 
                     var fullCropPath = Path.GetFullPath(options.Crop);
-                    //StorageFile storageFile = await StorageFile.GetFileFromPathAsync(fullCropPath);
-
                     Guid encoderCodecId = GetEncoderIdFromDecoder(decoderCodecId);
                     await SaveSoftwareBitmapToFileAsync(croppedBitmap, fullCropPath, encoderCodecId);
                 }
             }
         }
 
-        public static async Task<SoftwareBitmap> CropSoftwareBitmapAsync(SoftwareBitmap originalBitmap, uint cropX, uint cropY, uint cropWidth, uint cropHeight)
+        public static async Task<SoftwareBitmap> CropSoftwareBitmapAsync(SoftwareBitmap originalBitmap, BitmapBounds bitmapBounds)
         {
             var convertedBitmap = SoftwareBitmap.Convert(originalBitmap, BitmapPixelFormat.Bgra8, BitmapAlphaMode.Premultiplied);
-
             using var stream = new InMemoryRandomAccessStream();
 
             BitmapEncoder encoder = await BitmapEncoder.CreateAsync(BitmapEncoder.PngEncoderId, stream);
@@ -153,17 +168,9 @@ namespace wm_ocr_cli
             stream.Seek(0);
             BitmapDecoder decoder = await BitmapDecoder.CreateAsync(stream);
 
-            var bounds = new BitmapBounds
-            {
-                X = cropX,
-                Y = cropY,
-                Width = cropWidth,
-                Height = cropHeight
-            };
-
             var transform = new BitmapTransform
             {
-                Bounds = bounds
+                Bounds = bitmapBounds
             };
 
             SoftwareBitmap croppedBitmap = await decoder.GetSoftwareBitmapAsync(
@@ -189,33 +196,23 @@ namespace wm_ocr_cli
         private static async Task<int> HandleErrors(IEnumerable<CommandLine.Error> errors)
         {
             foreach (var error in errors)
-            {
                 Console.Error.WriteLine($"Error: {error}");
-            }
             return 1;
         }
 
-        static OcrEngine GetOcrEngine(string language)
+        static async Task<OcrResult?> RecognizeAsync(SoftwareBitmap bitmap, string? language)
         {
-            if (language.Length == 0)
-                return OcrEngine.TryCreateFromUserProfileLanguages();
+            OcrEngine ocrEngine;
+            if (language == null)
+            {
+                ocrEngine = OcrEngine.TryCreateFromUserProfileLanguages();
+            }
+            else
+            {
+                var lang = new Language(language);
+                ocrEngine = OcrEngine.TryCreateFromLanguage(lang);
+            }
 
-            var lang = new Language(language);
-            return OcrEngine.TryCreateFromLanguage(lang);
-        }
-
-        static async Task<Tuple<SoftwareBitmap, Guid>> GetIputBitmap(string imagePath)
-        {
-            using var fileStream = new FileStream(imagePath, FileMode.Open, FileAccess.Read);
-            var decoder = await BitmapDecoder.CreateAsync(fileStream.AsRandomAccessStream());
-            Guid decoderCodecId = decoder.DecoderInformation.CodecId;
-            SoftwareBitmap bitmap = await decoder.GetSoftwareBitmapAsync(BitmapPixelFormat.Bgra8, BitmapAlphaMode.Premultiplied);
-            return Tuple.Create(bitmap, decoderCodecId);
-        }
-
-        static async Task<OcrResult?> RecognizeAsync(SoftwareBitmap bitmap, string language)
-        {
-            OcrEngine ocrEngine = GetOcrEngine(language);
             if (ocrEngine == null)
             {
                 Console.Error.WriteLine("Selected language is not available.");
