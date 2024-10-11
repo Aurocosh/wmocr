@@ -20,6 +20,7 @@ namespace wmocr
                 Console.WriteLine("Supported languages:");
                 foreach (var language in OcrEngine.AvailableRecognizerLanguages)
                     Console.WriteLine(language.LanguageTag);
+                return 0;
             }
 
             try
