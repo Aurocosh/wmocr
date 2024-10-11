@@ -27,10 +27,12 @@ namespace wmocr
             if (options.Output != null)
             {
                 var fullOutputPath = Path.GetFullPath(options.Output);
-                if (options.Append)
-                    File.AppendAllText(fullOutputPath, textResult);
-                else
+                if (!options.Append)
                     File.WriteAllText(fullOutputPath, textResult);
+                else if (File.Exists(fullOutputPath) && new FileInfo(fullOutputPath).Length > 0)
+                    File.AppendAllText(fullOutputPath, "\n\n" + textResult);
+                else
+                    File.AppendAllText(fullOutputPath, textResult);
             }
 
             // Output result to stdout
