@@ -10,6 +10,8 @@
     <PublishSingleFile>true</PublishSingleFile>
     <SelfContained>false</SelfContained>
     <ApplicationIcon>assets\icon.ico</ApplicationIcon>
+    <VersionPrefix>1.0.0</VersionPrefix>
+    <Authors>Aurocosh</Authors>
   </PropertyGroup>
 
   <ItemGroup>
