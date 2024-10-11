@@ -4,28 +4,28 @@ namespace wmocr
 {
     public class Options
     {
-        [Option('i', "input", Required = false, HelpText = "Path to the image file to process with OCR.")]
+        [Option('i', "input", Required = false, HelpText = "Input image file path.")]
         public string? Input { get; set; }
 
-        [Option('o', "output", Required = false, HelpText = "Path to output text file. Writes OCR result to this file.")]
+        [Option('o', "output", Required = false, HelpText = "Output text file path to save OCR result.")]
         public string? Output { get; set; }
 
-        [Option('s', "stdout", Required = false, HelpText = "Perform OCR and print result to stdout. Default behaviour if no other output options is specified.")]
+        [Option('s', "stdout", Required = false, HelpText = "If specifed then the OCR result will be printed to stdout (Console). Default behaviour if no other output argument is specified.")]
         public bool Stdout { get; set; }
 
-        [Option('c', "crop", Required = false, HelpText = "Path to cropped output image.Detect bounding box for all text and crop original image to this bounding box.")]
+        [Option('c', "crop", Required = false, HelpText = "Cropped image file path. If specified then the original image will be cropped by the bounding box of the detected text and saved to file.")]
         public string? Crop { get; set; }
 
-        [Option('b', "bb-margin", Required = false, Default = 10, HelpText = "Bounding box margin.The bounding box will be expanded by this value.")]
+        [Option('b', "bb-margin", Required = false, Default = 10, HelpText = "Cropping bounding box margin.The bounding box will be expanded by this value before cropping.")]
         public int BoundingBoxMargin { get; set; }
 
         [Option('a', "append", HelpText = "When writing to text file append instead of overwriting the file.")]
         public bool Append { get; set; }
 
-        [Option('l', "lang", HelpText = "Which language should be used for OCR. Only languages with installed OCR support can be used.")]
+        [Option('l', "lang", HelpText = "Selected language for OCR.")]
         public string? Language { get; set; }
 
-        [Option('x', "lang-list", HelpText = "Print the list of all locally available languages for OCR.")]
+        [Option('x', "lang-list", HelpText = "Print the list of all available languages for OCR.")]
         public bool LanguageList { get; set; }
 
         [Option('n', "one-line", HelpText = "Return OCR result as a single line.")]
