@@ -3,7 +3,7 @@ using Windows.Media.Ocr;
 using Windows.Graphics.Imaging;
 using CommandLine;
 
-namespace wm_ocr_cli
+namespace wmocr
 {
     internal class Program
     {

@@ -1,6 +1,6 @@
 ﻿using CommandLine;
 
-namespace wm_ocr_cli
+namespace wmocr
 {
     public class Options
     {

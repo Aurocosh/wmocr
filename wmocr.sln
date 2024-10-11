@@ -3,7 +3,7 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.11.35312.102
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "wm-ocr-cli", "wm-ocr-cli\wm-ocr-cli.csproj", "{55836EB9-2485-4D14-8D19-A2626D9D4B6A}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "wmocr", "wmocr\wmocr.csproj", "{2DB99E0B-0CA8-4D22-9362-E059A3FC98F7}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -11,15 +11,15 @@ Global
 		Release|Any CPU = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{55836EB9-2485-4D14-8D19-A2626D9D4B6A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{55836EB9-2485-4D14-8D19-A2626D9D4B6A}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{55836EB9-2485-4D14-8D19-A2626D9D4B6A}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{55836EB9-2485-4D14-8D19-A2626D9D4B6A}.Release|Any CPU.Build.0 = Release|Any CPU
+		{2DB99E0B-0CA8-4D22-9362-E059A3FC98F7}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{2DB99E0B-0CA8-4D22-9362-E059A3FC98F7}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{2DB99E0B-0CA8-4D22-9362-E059A3FC98F7}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{2DB99E0B-0CA8-4D22-9362-E059A3FC98F7}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
-		SolutionGuid = {FAAB0AC4-5077-4520-A333-97CDD8B5940F}
+		SolutionGuid = {6D454A95-10F8-4E98-A3C3-656DB5A87790}
 	EndGlobalSection
 EndGlobal

@@ -1,6 +1,6 @@
 ﻿using Windows.Foundation;
 
-namespace wm_ocr_cli
+namespace wmocr
 {
     internal static class RectExtensions
     {

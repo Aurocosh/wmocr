@@ -1,18 +1,18 @@
 {
   "profiles": {
-    "wm-ocr-cli": {
+    "wmocr": {
       "commandName": "Project",
       "commandLineArgs": "-i \"D:\\Temp\\test.jpg\" -l ru"
     },
-    "wm-ocr-cli crop test": {
+    "wmocr crop test": {
       "commandName": "Project",
       "commandLineArgs": "-i \"D:\\Temp\\test.jpg\" -c \"D:\\Temp\\test-cropped.jpg\"  -l ru"
     },
-    "wm-ocr-cli text file": {
+    "wmocr text file": {
       "commandName": "Project",
       "commandLineArgs": "-i \"D:\\Temp\\test.jpg\" -o \"D:\\Temp\\ocr-result.txt\"  -l ru"
     },
-    "wm-ocr-cli stdout, text and crop": {
+    "wmocr stdout, text and crop": {
       "commandName": "Project",
       "commandLineArgs": "-i \"D:\\Temp\\test.jpg\" -c \"D:\\Temp\\test-cropped.jpg\" -o \"D:\\Temp\\ocr-result.txt\" -s -b 120 -l ru"
     }

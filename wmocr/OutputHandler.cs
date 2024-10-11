@@ -4,7 +4,7 @@ using Windows.Foundation;
 using Windows.Storage.Streams;
 using System.Text;
 
-namespace wm_ocr_cli
+namespace wmocr
 {
     class OutputHandler
     {
