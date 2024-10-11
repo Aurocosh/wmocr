@@ -10,7 +10,7 @@ namespace wmocr
         public static async Task Main(string[] args)
         {
             var result = await Parser.Default.ParseArguments<Options>(args)
-              .MapResult(Execute, HandleErrors);
+              .WithParsedAsync(Execute);
         }
 
         private static async Task<int> Execute(Options options)
@@ -31,13 +31,6 @@ namespace wmocr
                 Console.Error.WriteLine($"Caught exception: {error.Message}");
                 return 1;
             }
-        }
-
-        private static async Task<int> HandleErrors(IEnumerable<Error> errors)
-        {
-            foreach (var error in errors)
-                Console.Error.WriteLine($"Error: {error}");
-            return 1;
         }
 
         static async Task<int> PerformOcr(Options options)
