@@ -3,6 +3,7 @@
   <PropertyGroup>
     <OutputType>Exe</OutputType>
     <TargetFramework>net8.0-windows10.0.17763.0</TargetFramework>
+	<RuntimeIdentifiers>win-x86;win-x64</RuntimeIdentifiers>
     <RootNamespace>wmocr</RootNamespace>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
@@ -12,6 +13,11 @@
     <ApplicationIcon>assets\icon.ico</ApplicationIcon>
     <VersionPrefix>1.0.0</VersionPrefix>
     <Authors>Aurocosh</Authors>
+  </PropertyGroup>
+  
+  <PropertyGroup Condition="'$(Configuration)'=='Release'">
+    <DebugSymbols>False</DebugSymbols>
+    <DebugType>None</DebugType>
   </PropertyGroup>
 
   <ItemGroup>
