@@ -48,12 +48,14 @@ jobs:
       with:
         name: build-artifact-${{ matrix.runtime }}
         path: ./
+        retention-days: 1
         
     - name: Upload build artifacts
       uses: actions/upload-artifact@v4.4.3
       with:
         name: wmocr-${{ matrix.runtime }}
         path: wmocr/bin/Release/net8.0-windows10.0.17763.0/${{ matrix.runtime }}/publish/wmocr-${{ matrix.runtime }}.zip
+        retention-days: 1
 
   release:
     if: startsWith(github.ref, 'refs/tags/')  # Only run this job when a tag is created
@@ -78,6 +80,11 @@ jobs:
           Tag: ${{ github.ref_name }}
         draft: false
         prerelease: false
+    
+    - name: Download Windows x86 artifact
+      uses: actions/download-artifact@v3
+      with:
+        name: wmocr-win-x86.zip
 
     # Upload Windows x86 build artifact to the release
     - name: Upload Windows x86 Asset
@@ -86,10 +93,15 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: ./wmocr-win-x86.zip
-        asset_name: my-app-win-x86.zip
+        asset_path: wmocr-win-x86.zip
+        asset_name: wmocr-win-x86.zip
         asset_content_type: application/zip
 
+    - name: Download Windows x64 artifact
+      uses: actions/download-artifact@v3
+      with:
+        name: wmocr-win-x64.zip
+        
     # Upload Windows x64 build artifact to the release
     - name: Upload Windows x64 Asset
       uses: actions/upload-release-asset@v1
