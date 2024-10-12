@@ -84,7 +84,7 @@ jobs:
     - name: Download Windows x86 artifact
       uses: actions/download-artifact@v3
       with:
-        name: wmocr-win-x86.zip
+        name: wmocr-win-x86
 
     # Upload Windows x86 build artifact to the release
     - name: Upload Windows x86 Asset
@@ -100,7 +100,7 @@ jobs:
     - name: Download Windows x64 artifact
       uses: actions/download-artifact@v3
       with:
-        name: wmocr-win-x64.zip
+        name: wmocr-win-x64
         
     # Upload Windows x64 build artifact to the release
     - name: Upload Windows x64 Asset
@@ -109,7 +109,7 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: ./wmocr-win-x64.zip
-        asset_name: my-app-win-x64.zip
+        asset_path: wmocr-win-x64.zip
+        asset_name: wmocr-win-x64.zip
         asset_content_type: application/zip
 
