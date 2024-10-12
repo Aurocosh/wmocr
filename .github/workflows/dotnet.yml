@@ -61,14 +61,7 @@ jobs:
 
     - name: Create Release
       id: create_release
-      uses: actions/create-release@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # GitHub provides this secret automatically
-      with:
-        tag_name: ${{ github.ref_name }}  # Use the pushed tag as the release tag
-        release_name: Release ${{ github.ref_name }}
-        draft: false
-        prerelease: false
+      uses: softprops/action-gh-release@v2
     
     - name: Download Windows x86 artifact
       uses: actions/download-artifact@v4.1.8
