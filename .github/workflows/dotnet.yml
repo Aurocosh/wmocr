@@ -1,0 +1,91 @@
+# This workflow will build a .NET project
+# For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-net
+
+name: Build and Release .NET App
+
+on:
+  push:
+    branches:
+      - main  # Build the project on commits to the main branch
+    tags:
+      - '*'  # Create a release only when a new tag is pushed
+  workflow_dispatch:  # Allow manual triggering of the workflow
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        runtime: [win-x86, win-x64]  # Define a matrix of RIDs (target platforms)
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '8.0.x'
+
+    - name: Restore dependencies
+      run: dotnet restore
+
+    - name: Publish app
+      run: dotnet publish -c Release -r ${{ matrix.runtime }} --no-restore
+
+    - name: Create ZIP file
+      run: zip -r my-app-${{ matrix.runtime }}.zip ./bin/Release/net8.0-windows10.0.17763.0/${{ matrix.runtime }}/publish/
+
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v4.4.3
+      with:
+        name: wmocr-${{ matrix.runtime }}
+        path: ./wmocr-${{ matrix.runtime }}.zip
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/')  # Only run this job when a tag is created
+    needs: build  # Ensure the release job runs after the build job
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    # Create a GitHub release using the tag name
+    - name: Create Release
+      id: create_release
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # GitHub provides this secret automatically
+      with:
+        tag_name: ${{ github.ref_name }}  # Use the pushed tag as the release tag
+        release_name: Release ${{ github.ref_name }}
+        body: |
+          Automated release of the .NET app.
+          Tag: ${{ github.ref_name }}
+        draft: false
+        prerelease: false
+
+    # Upload Windows x86 build artifact to the release
+    - name: Upload Windows x86 Asset
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: ./wmocr-win-x86.zip
+        asset_name: my-app-win-x86.zip
+        asset_content_type: application/zip
+
+    # Upload Windows x64 build artifact to the release
+    - name: Upload Windows x64 Asset
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: ./wmocr-win-x64.zip
+        asset_name: my-app-win-x64.zip
+        asset_content_type: application/zip
+
