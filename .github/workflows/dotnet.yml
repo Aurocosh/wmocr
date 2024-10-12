@@ -38,7 +38,7 @@ jobs:
       uses: TheDoctor0/zip-release@0.7.6
       with:
         filename: wmocr-${{ matrix.runtime }}.zip
-        directory: ./bin/Release/net8.0-windows10.0.17763.0/${{ matrix.runtime }}/publish/
+        directory: wmocr/bin/Release/net8.0-windows10.0.17763.0/${{ matrix.runtime }}/publish/
 
     - name: Upload build artifacts
       uses: actions/upload-artifact@v4.4.3
